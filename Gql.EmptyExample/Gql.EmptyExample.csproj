@@ -17,7 +17,10 @@
     <PackageReference Include="MongoDB.Driver" Version="2.19.0" />
     <PackageReference Include="MongoDB.Driver.Core" Version="2.19.0" />
     <PackageReference Include="HotChocolate.Types.Analyzers" Version="12.15.0" />
-
+    <PackageReference Include="Okta.AspNetCore" Version="4.0.0" />
   </ItemGroup>
+
+
+
 
 </Project>

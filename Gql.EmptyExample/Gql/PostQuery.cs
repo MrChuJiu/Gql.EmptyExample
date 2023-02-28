@@ -1,10 +1,15 @@
-﻿using Microsoft.AspNetCore.Authorization;
-using Microsoft.Extensions.Options;
-using MongoDB.Bson;
-using MongoDB.Driver;
+﻿using System;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
+using HotChocolate;
+using HotChocolate.AspNetCore.Authorization;
+using HotChocolate.Types;
+using HotChocolate.Types.Relay;
 
 namespace Gql.EmptyExample.Posts.Core.Domain
 {
+    [Authorize(Policy = "HasCountry")]
     public class PostQuery
     {
 
@@ -13,7 +18,7 @@ namespace Gql.EmptyExample.Posts.Core.Domain
         [UseProjection]
         [UseFiltering]
         [UseSorting]
-        [Authorize(Policy = "AdminOnly")]
+        [Authorize]
         public IExecutable<Post> GetPosts([Service] DbContext db)
         { 
             

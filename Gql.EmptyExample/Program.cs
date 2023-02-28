@@ -1,13 +1,16 @@
+using System.Security.Claims;
 using Gql.EmptyExample;
 using Gql.EmptyExample.Gql;
 using Gql.EmptyExample.Interceptor;
 using Gql.EmptyExample.Middleware;
 using Gql.EmptyExample.Posts.Core.Domain;
 using GraphQL.Server.Ui.Voyager;
+using HotChocolate.AspNetCore.Authorization;
 using HotChocolate.Execution;
 using HotChocolate.Types.Pagination;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using MongoDB.Bson;
+using Okta.AspNetCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -16,26 +19,50 @@ builder.Services.Configure<DatabaseSettings>(
 
 builder.Services.AddSingleton<DbContext>();
 
+//builder.Services.AddSingleton<IAuthorizationHandler, MinimumAgeHandler>();
+
+builder.Services.AddAuthentication(options =>
+{
+    options.DefaultAuthenticateScheme = OktaDefaults.ApiAuthenticationScheme;
+    options.DefaultChallengeScheme = OktaDefaults.ApiAuthenticationScheme;
+    options.DefaultSignInScheme = OktaDefaults.ApiAuthenticationScheme;
+}).AddOktaWebApi(new OktaWebApiOptions()
+{
+    OktaDomain = "https://dev-63355328.okta.com",
+    AuthorizationServerId = "default",
+    Audience = "api://default",
+});
+
+builder.Services.AddAuthorization(options =>
+{
+    //options.AddPolicy("AtLeast21", policy =>
+    //    policy.Requirements.Add(new MinimumAgeRequirement(21)));
+
+    options.AddPolicy("HasCountry", policy =>
+        policy.RequireAssertion(context =>
+            context.User.HasClaim(c => c.Type == "http://schemas.microsoft.com/identity/claims/scope")));
+});
+
 builder.Services
     .AddGraphQLServer()
-    .AddAuthorization()
     .AddQueryType<PostQuery>()
     .AddMutationType<PostMutation>()
     .AddSubscriptionType<PostSubscription>()
+    .AddAuthorization()
     // 接口响应时间不能大于1秒
-    .ModifyRequestOptions(t => t.ExecutionTimeout = TimeSpan.FromSeconds(1))
-    .UseExceptions()
-    .UseRequest<TimeoutMiddleware>()
-    //.UseTimeout()
-    .UseDocumentCache()
-    .UseDocumentParser()
-    .UseDocumentValidation()
-    .UseOperationCache()
-    .UseOperationComplexityAnalyzer()
-    .UseOperationResolver()
-    .UseOperationVariableCoercion()
-    .UseOperationExecution()
-    .AddHttpRequestInterceptor<LoggingInterceptor>()
+    //.ModifyRequestOptions(t => t.ExecutionTimeout = TimeSpan.FromSeconds(1))
+    //.UseExceptions()
+    //.UseRequest<TimeoutMiddleware>()
+    ////.UseTimeout()
+    //.UseDocumentCache()
+    //.UseDocumentParser()
+    //.UseDocumentValidation()
+    //.UseOperationCache()
+    //.UseOperationComplexityAnalyzer()
+    //.UseOperationResolver()
+    //.UseOperationVariableCoercion()
+    //.UseOperationExecution()
+    //.AddHttpRequestInterceptor<LoggingInterceptor>()
     .AddInMemorySubscriptions()
     .AddMongoDbFiltering()
     .AddMongoDbSorting()
@@ -48,20 +75,12 @@ builder.Services
     });
 
 
-builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-    .AddJwtBearer(options =>
-    {
-        options.Authority = "https://localhost:7145"; // IdentityServer地址
-        options.Audience = "graphql_api"; // 与IdentityServer中客户端的ClientId一致
-    });
-
-
-
-
 
 // Add services to the container.
 
 var app = builder.Build();
+
+app.UseRouting();
 
 app.UseHttpsRedirection();
 
@@ -73,11 +92,10 @@ app.UseAuthorization();
 
 app.UseWebSockets();
 
-app.UseRouting().UseEndpoints(endpoints =>
+app.UseEndpoints(endpoints =>
 {
     endpoints.MapGraphQL();
 });
-
 
 app.Run();
 
